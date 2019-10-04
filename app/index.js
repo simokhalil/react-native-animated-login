@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { View, Text, StyleSheet, Dimensions, TextInput, KeyboardAvoidingView } from 'react-native';
 
 import Svg, { Image, Circle, ClipPath } from 'react-native-svg';
-
+import { Accelerometer } from 'expo-sensors';
 import Animated, { Easing } from 'react-native-reanimated';
 import { TapGestureHandler, State } from 'react-native-gesture-handler';
 const { width, height } = Dimensions.get('screen');
@@ -30,7 +30,7 @@ function runTiming(clock, value, dest) {
     finished: new Value(0),
     position: new Value(0),
     time: new Value(0),
-    frameTime: new Value(0)
+    frameTime: new Value(0),
   };
 
   const config = {
@@ -56,6 +56,10 @@ function runTiming(clock, value, dest) {
 class MusicApp extends Component {
   constructor() {
     super();
+
+    this.state = {
+      accelerometerData: { x: 0, y: 0, z: 0 },
+    };
 
     this.buttonOpacity = new Value(1);
 
@@ -118,7 +122,29 @@ class MusicApp extends Component {
       outputRange: [180, 360],
       extrapolate: Extrapolate.CLAMP
     });
+
+    this.screenWidth = width;
+    this.screenHeight = height;
+    this.boxWidth = this.screenWidth / 10.0
   }
+
+  componentWillUnmount() {
+    this._unsubscribeFromAccelerometer();
+  }
+
+  componentDidMount() {
+    this._subscribeToAccelerometer();
+  }
+
+  _subscribeToAccelerometer = () => {
+    this._accelerometerSubscription = Accelerometer.addListener(accelerometerData => this.setState({ accelerometerData })
+    );
+  };
+
+  _unsubscribeFromAccelerometer = () => {
+    this._accelerometerSubscription && this._acceleroMeterSubscription.remove();
+    this._accelerometerSubscription = null;
+  };
 
   render() {
     return (
@@ -133,29 +159,36 @@ class MusicApp extends Component {
           <Animated.View
             style={{
               ...StyleSheet.absoluteFill,
-              transform: [{ translateY: this.bgY }]
+              transform: [{ translateY: this.bgY }],
             }}
           >
-            <Svg height={height + 50} width={width}>
+            <Svg height={height + 100} width={width * 2}
+              style={{
+                position: 'absolute',
+                top: -50 + height * (this.state.accelerometerData.y / 20 + 2.0) / 2.0 - (height),
+                left: this.screenWidth * (this.state.accelerometerData.x / 5 + 2.0) / 2.0 - (this.screenWidth * 1.5),
+              }}
+            >
               <ClipPath id="clip">
-                <Circle r={height + 50} cx={width / 2} />
+                <Circle r={height + 100} cx={width} />
               </ClipPath>
               <Image
                 href={require('../assets/bg2.jpg')}
-                width={width}
-                height={height + 50}
+                width={width * 2}
+                height={height + 100}
                 preserveAspectRatio="xMidYMid slice"
                 clipPath="url(#clip)"
               />
             </Svg>
           </Animated.View>
+
           <View style={{ height: height / 3, justifyContent: 'center' }}>
             <TapGestureHandler onHandlerStateChange={this.onStateChange}>
               <Animated.View
                 style={{
                   ...styles.button,
                   opacity: this.buttonOpacity,
-                  transform: [{ translateY: this.buttonY }]
+                  transform: [{ translateY: this.buttonY }, { perspective: 45 }]
                 }}
               >
                 <Text style={{ fontSize: 20, fontWeight: 'bold' }}>SIGN IN</Text>
